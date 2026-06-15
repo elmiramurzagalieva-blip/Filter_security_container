@@ -1,0 +1,80 @@
+services:
+  # 1. приложение (Flask + логика фильтрации)
+  app:
+    build: .
+    container_name: security_app
+    ports:
+      - "8080:5000"
+    depends_on:
+      - mysql
+    networks:
+      - security_net
+
+  # 2. веб-сервер NGINX
+  nginx:
+    image: nginx:alpine
+    container_name: security_nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx:/etc/nginx/conf.d:ro
+    depends_on:
+      - app
+    networks:
+      - security_net
+
+  # 3. база данных MySQL
+  mysql:
+    image: mysql:8.0
+    container_name: security_mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: security_db
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - security_net
+
+  # 4. phpMyAdmin
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: security_phpmyadmin
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+    ports:
+      - "1500:80"
+    networks:
+      - security_net
+
+  # 5. Prometheus 
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: security_prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - security_net
+
+  # 6. Grafana 
+  grafana:
+    image: grafana/grafana:latest
+    container_name: security_grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    networks:
+      - security_net
+
+networks:
+  security_net:
+    driver: bridge
+
+volumes:
+  mysql-data:

@@ -1,0 +1,61 @@
+{
+  "description": "Тестовые данные для контейнера безопасности",
+  "test_cases": [
+    {
+      "id": 1,
+      "name": "Вредоносный домен",
+      "url": "https://malicious.com/bad",
+      "content": "Обычный текст",
+      "expected": "BLOCKED"
+    },
+    {
+      "id": 2,
+      "name": "Короткая ссылка bit.ly",
+      "url": "https://bit.ly/abc123",
+      "content": "",
+      "expected": "BLOCKED"
+    },
+    {
+      "id": 3,
+      "name": "Короткая ссылка clck.ru",
+      "url": "https://clck.ru/abc",
+      "content": "",
+      "expected": "BLOCKED"
+    },
+    {
+      "id": 4,
+      "name": "XSS атака",
+      "url": "https://google.com",
+      "content": "<script>alert('XSS')</script>",
+      "expected": "BLOCKED"
+    },
+    {
+      "id": 5,
+      "name": "Вредоносный .exe файл",
+      "url": "https://site.com/download",
+      "content": "Скачать setup.exe",
+      "expected": "BLOCKED"
+    },
+    {
+      "id": 6,
+      "name": "PowerShell команда",
+      "url": "https://site.com",
+      "content": "powershell -command",
+      "expected": "BLOCKED"
+    },
+    {
+      "id": 7,
+      "name": "Кража cookie",
+      "url": "https://site.com",
+      "content": "document.cookie",
+      "expected": "BLOCKED"
+    },
+    {
+      "id": 8,
+      "name": "Безопасный контент",
+      "url": "https://gubkin.ru",
+      "content": "Учебный процесс в РГУ НиГ",
+      "expected": "ALLOWED"
+    }
+  ]
+}

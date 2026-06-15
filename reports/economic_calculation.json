@@ -1,0 +1,42 @@
+{
+  "code_metrics": {
+    "product": {
+      "physical_lines": 275,
+      "effective_lines": 228,
+      "functions": 17,
+      "classes": 0
+    },
+    "tests": {
+      "physical_lines": 61,
+      "effective_lines": 61,
+      "functions": 0
+    }
+  },
+  "inputs": {
+    "accepted_avc": 20,
+    "hours_per_month": 160,
+    "rely": 1.0,
+    "rcpx": 1.0,
+    "ruse": 0.95,
+    "pdif": 1.0,
+    "prex": 1.22,
+    "fcil": 0.87,
+    "sced": 1.0,
+    "effort_multiplier": 1.008
+  },
+  "results": {
+    "loc": 340,
+    "kdsi": 0.34,
+    "person_months": 1.05,
+    "pm_early": 0.78,
+    "development_hours": 167,
+    "additional_hours": 95,
+    "total_hours": 262,
+    "tdev_months": 3.05,
+    "personnel_cost": 307125,
+    "platform_cost": 504000,
+    "maintenance_cost": 75600,
+    "training_cost": 120000,
+    "total_cost": 1006725
+  }
+}

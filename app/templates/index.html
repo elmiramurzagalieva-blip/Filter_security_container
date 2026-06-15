@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Контейнер безопасности — Фильтрация и анализ контента</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f7fa;
+        }
+        h1 { color: #1e293b; font-size: 22px; font-weight: 500; margin-bottom: 5px; }
+        .subtitle { color: #64748b; margin-bottom: 25px; font-size: 13px; }
+        h2 { color: #334155; font-size: 16px; font-weight: 500; margin: 20px 0 15px; }
+        h3 { color: #475569; font-size: 14px; font-weight: 500; margin: 15px 0 10px; }
+        input, textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 4px;
+            font-family: inherit;
+            font-size: 13px;
+            background-color: #fff;
+            margin-bottom: 12px;
+        }
+        input:focus, textarea:focus { outline: none; border-color: #2563eb; }
+        button {
+            background-color: #2563eb;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            margin-right: 8px;
+            margin-bottom: 10px;
+        }
+        button:hover { background-color: #1d4ed8; }
+        .result {
+            padding: 10px 12px;
+            border-radius: 4px;
+            font-size: 13px;
+            margin: 12px 0;
+        }
+        .allowed { background-color: #dcfce7; color: #166534; }
+        .blocked { background-color: #fee2e2; color: #991b1b; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+            margin-top: 12px;
+        }
+        th, td {
+            border: 1px solid #e2e8f0;
+            padding: 8px 6px;
+            text-align: left;
+        }
+        th { background-color: #f1f5f9; font-weight: 500; }
+        .stats-container {
+            display: flex;
+            justify-content: center;
+            margin: 10px 0;
+        }
+        .chart-box { width: 300px; }
+        .stats-text {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin: 15px 0 5px;
+            font-size: 14px;
+        }
+        .stats-allowed { color: #2563eb; font-weight: 600; }
+        .stats-blocked { color: #dc2626; font-weight: 600; }
+        hr { border: none; border-top: 1px solid #e2e8f0; margin: 20px 0; }
+        
+        /* Стили для новых графиков (упрощенные, без обводки) */
+.charts-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin: 20px 0;
+}
+.chart-card {
+    background: transparent;
+    padding: 0;
+}
+.chart-card h3 {
+    color: #334155;
+    font-size: 16px;
+    font-weight: 500;
+    margin: 20px 0 15px;
+}
+.chart-note {
+    color: #64748b;
+    font-size: 12px;
+    margin-top: 8px;
+    text-align: center;
+}
+canvas { max-height: 250px; width: 100% !important; }
+
+@media (max-width: 768px) {
+    .charts-row { grid-template-columns: 1fr; }
+}
+    </style>
+</head>
+<body>
+    <h1>Контейнер безопасности</h1>
+    <div class="subtitle">Защита от вредоносного кода через рекламу и контент</div>
+
+    <input type="text" id="urlInput" placeholder="URL для проверки" value="https://malicious.com/bad">
+    <textarea id="contentInput" rows="3" placeholder="Содержимое для анализа">&lt;script&gt;alert('XSS')&lt;/script&gt;</textarea>
+    
+    <button onclick="checkContent()">Проверить</button>
+    <button onclick="refreshLogs()">Обновить</button>
+
+    <div id="result" class="result" style="display: none;"></div>
+
+    <hr>
+    <h2>Статистика фильтрации</h2>
+    <div class="stats-container">
+        <div class="chart-box">
+            <canvas id="statsChart"></canvas>
+        </div>
+    </div>
+    <div class="stats-text">
+        <span>Разрешено: <span id="allowedCount" class="stats-allowed">0</span></span>
+        <span>Заблокировано: <span id="blockedCount" class="stats-blocked">0</span></span>
+    </div>
+
+    <hr>
+    <h2>Журнал событий</h2>
+    <table id="logsTable">
+        <thead>
+            <tr><th>Время</th><th>URL</th><th>Решение</th><th>Причина</th></tr>
+        </thead>
+        <tbody id="logsBody">
+            <tr><td colspan="4" style="text-align: center;">---<\/td></tr>
+        </tbody>
+    </table>
+
+    <!-- НОВЫЕ ГРАФИКИ - добавлены ниже таблицы -->
+    <hr>
+    <div class="charts-row">
+        <div class="chart-card">
+            <h3>Временной ряд блокировок (по часам)</h3>
+            <canvas id="timelineChart"></canvas>
+        </div>
+        <div class="chart-card">
+            <h3>Распределение причин блокировок</h3>
+            <canvas id="reasonsChart"></canvas>
+        </div>
+    </div>
+
+    <script>
+        let chart = null;
+        let timelineChart = null;
+        let reasonsChart = null;
+
+        // Инициализация круговой диаграммы статистики (было)
+        function initChart() {
+            const ctx = document.getElementById('statsChart').getContext('2d');
+            chart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Разрешено', 'Заблокировано'],
+                    datasets: [{
+                        data: [0, 0],
+                        backgroundColor: ['#2563eb', '#dc2626'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    cutout: '60%',
+                    animation: false,
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+
+        // Временной ряд блокировок 
+        async function updateTimelineChart() {
+            const response = await fetch('/api/logs');
+            const logs = await response.json();
+            
+            // Группировка блокировок по часам (0-23)
+            const hourlyData = {};
+            for (let i = 0; i < 24; i++) hourlyData[i] = 0;
+            
+            logs.forEach(log => {
+                if (log.decision === 'BLOCKED' && log.timestamp) {
+                    const hour = new Date(log.timestamp).getHours();
+                    if (!isNaN(hour)) hourlyData[hour]++;
+                }
+            });
+            
+            const hours = Object.keys(hourlyData).map(h => `${h}:00`);
+            const counts = Object.values(hourlyData);
+            
+            if (timelineChart) timelineChart.destroy();
+            const ctx = document.getElementById('timelineChart').getContext('2d');
+            timelineChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: hours,
+                    datasets: [{
+                        label: 'Количество блокировок',
+                        data: counts,
+                        borderColor: '#dc2626',
+                        backgroundColor: 'rgba(220,38,38,0.1)',
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 4,
+                        pointBackgroundColor: '#dc2626'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: { position: 'top' },
+                        tooltip: { callbacks: { label: (ctx) => `${ctx.raw} блокировок` } }
+                    },
+                    scales: {
+                        y: { beginAtZero: true, title: { display: true, text: 'Количество блокировок' } },
+                        x: { title: { display: true, text: 'Время (часы)' } }
+                    }
+                }
+            });
+        }
+
+        // Распределение причин блокировок 
+        async function updateReasonsChart() {
+            const response = await fetch('/api/logs');
+            const logs = await response.json();
+            
+            const reasons = {
+                'Черный список': 0,
+                'Короткие ссылки': 0,
+                'Вредоносный код': 0,
+                'Другое': 0
+            };
+            
+            logs.forEach(log => {
+                if (log.decision === 'BLOCKED' && log.reason) {
+                    if (log.reason.includes('черном списке')) reasons['Черный список']++;
+                    else if (log.reason.includes('Короткие ссылки')) reasons['Короткие ссылки']++;
+                    else if (log.reason.includes('паттерн') || log.reason.includes('XSS') || log.reason.includes('скрипт')) 
+                        reasons['Вредоносный код']++;
+                    else reasons['Другое']++;
+                }
+            });
+            
+            if (reasonsChart) reasonsChart.destroy();
+            const ctx = document.getElementById('reasonsChart').getContext('2d');
+            reasonsChart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: Object.keys(reasons),
+                    datasets: [{
+                        data: Object.values(reasons),
+                        backgroundColor: ['#f44336', '#ff9800', '#9c27b0', '#607d8b'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { font: { size: 10 } } },
+                        tooltip: { callbacks: { label: (ctx) => `${ctx.label}: ${ctx.raw} блокировок` } }
+                    }
+                }
+            });
+        }
+
+        async function checkContent() {
+            const url = document.getElementById('urlInput').value;
+            const content = document.getElementById('contentInput').value;
+            
+            const response = await fetch('/api/check', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url, content })
+            });
+            
+            const data = await response.json();
+            const resultDiv = document.getElementById('result');
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result ' + (data.decision === 'ALLOWED' ? 'allowed' : 'blocked');
+            resultDiv.innerHTML = data.decision === 'ALLOWED' ? 'Разрешено' : 'Заблокировано: ' + data.reason;
+            
+            refreshLogs();
+            refreshStats();
+            updateTimelineChart();   // Обновляем временной ряд
+            updateReasonsChart();    // Обновляем диаграмму причин
+        }
+
+        async function refreshLogs() {
+            const response = await fetch('/api/logs');
+            const logs = await response.json();
+            const tbody = document.getElementById('logsBody');
+            
+            if (logs.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align: center;">---<\/td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = logs.slice().reverse().slice(0, 10).map(log =>
+                `<tr>
+                    <td>${log.timestamp}</td>
+                    <td>${log.url || '-'}</td>
+                    <td style="color: ${log.decision === 'ALLOWED' ? '#16a34a' : '#dc2626'}; font-weight: 500;">${log.decision}</td>
+                    <td>${log.reason}</td>
+                </tr>`
+            ).join('');
+        }
+
+        async function refreshStats() {
+            const response = await fetch('/api/stats');
+            const stats = await response.json();
+            document.getElementById('allowedCount').innerText = stats.allowed;
+            document.getElementById('blockedCount').innerText = stats.blocked;
+            
+            if (chart) {
+                chart.data.datasets[0].data = [stats.allowed, stats.blocked];
+                chart.update();
+            }
+        }
+
+        window.onload = function() {
+            initChart();
+            refreshLogs();
+            refreshStats();
+            updateTimelineChart();
+            updateReasonsChart();
+        };
+    </script>
+</body>
+</html>

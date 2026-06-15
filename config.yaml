@@ -1,0 +1,82 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config
+data:
+  default.conf: |
+    server {
+        listen 8080;
+        server_name localhost;
+        location / {
+            proxy_pass http://localhost:5000;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        }
+        location /health {
+            access_log off;
+            return 200 "OK\n";
+            add_header Content-Type text/plain;
+        }
+        add_header X-XSS-Protection "1; mode=block" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-Frame-Options "DENY" always;
+    }
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: security-pod
+  labels:
+    app: security-container
+spec:
+  containers:
+  - name: mysql-container
+    image: mysql:8.0
+    env:
+      - name: MYSQL_ROOT_PASSWORD
+        value: "rootpass"
+      - name: MYSQL_DATABASE
+        value: "security_db"
+    ports:
+      - containerPort: 3306
+
+  - name: app-container
+    image: elmiramurzagalieva/security-filter:latest
+    env:
+      - name: DB_HOST
+        value: "localhost"
+      - name: MYSQL_ROOT_PASSWORD
+        value: "rootpass"
+      - name: MYSQL_DATABASE
+        value: "security_db"
+    ports:
+      - containerPort: 5000
+
+  - name: phpmyadmin-container
+    image: phpmyadmin/phpmyadmin
+    env:
+      - name: PMA_HOST
+        value: "localhost"
+      - name: PMA_PORT
+        value: "3306"
+      - name: PMA_USER
+        value: "root"
+      - name: PMA_PASSWORD
+        value: "rootpass"
+    ports:
+      - containerPort: 80
+
+  - name: nginx-container
+    image: nginx:alpine
+    ports:
+      - containerPort: 8080
+    volumeMounts:
+      - name: nginx-config
+        mountPath: /etc/nginx/conf.d/default.conf
+        subPath: default.conf
+
+  volumes:
+    - name: nginx-config
+      configMap:
+        name: nginx-config

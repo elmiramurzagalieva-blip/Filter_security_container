@@ -1,0 +1,60 @@
+@startuml
+skinparam rectangle {
+  BackgroundColor #FFFFFF
+  BorderColor #000000
+  FontColor #000000
+  FontSize 11
+}
+
+title SecContainer - Микросервисная архитектура
+
+rectangle "SecContainer (Контейнер безопасности)" {
+  
+  rectangle "Модули фильтрации" as Filter {
+    component "Blacklist Domain Filter"
+    component "Short Link Blocker"
+    component "XSS/Injection Detector"
+    component "SSL-инспекция (HTTPS)"
+    component "Карантин подозрительного контента"
+  }
+  
+  rectangle "Принятие решения" as Decision {
+    component "Risk Scoring Engine"
+    component "Decision Engine"
+    component "ALLOWED / BLOCKED"
+    component "Блокировка доступа"
+    component "403 Forbidden"
+  }
+  
+  rectangle "Логирование и мониторинг" as Monitoring {
+    component "MySQL (сохранение логов)"
+    component "Prometheus (сбор метрик)"
+    component "Grafana (дашборды)"
+    component "phpMyAdmin (администрирование)"
+  }
+  
+  rectangle "API-эндпоинты" as API {
+    component "POST /api/check"
+    component "GET  /api/logs"
+    component "GET  /api/stats"
+    component "GET  /metrics"
+    component "GET  /health"
+  }
+  
+  rectangle "Интеграции" as Integrations {
+    component "Docker Container"
+    component "Kubernetes (k8s)"
+    component "Ansible (автоматизация)"
+    component "REST API"
+    component "Syslog"
+  }
+  
+  rectangle "Системы аутентификации" as Auth {
+    component "AD (Active Directory)"
+    component "LDAP"
+    component "RADIUS"
+    component "TACACS+"
+  }
+}
+
+@enduml

@@ -1,0 +1,52 @@
+services:
+  # 1. Приложение (Flask + логика фильтрации)
+  app:
+    build: .
+    container_name: security_app
+    networks:
+      - security_net
+
+  # 2. Веб-сервер NGINX
+  nginx:
+    image: nginx:alpine
+    container_name: security_nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx:/etc/nginx/conf.d:ro
+    depends_on:
+      - app
+    networks:
+      - security_net
+
+  # 3. База данных MySQL
+  mysql:
+    image: mysql:8.0
+    container_name: security_mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: security_db
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - security_net
+
+  # 4. phpMyAdmin
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: security_phpmyadmin
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+    ports:
+      - "1500:80"
+    networks:
+      - security_net
+
+networks:
+  security_net:
+    driver: bridge
+
+volumes:
+  mysql-data:
+  
